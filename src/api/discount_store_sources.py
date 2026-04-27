@@ -13,15 +13,6 @@ class PublicDataSource:
 
 DISCOUNT_STORE_SOURCES = [
     PublicDataSource(
-        source_id="yeongcheon_file",
-        region="경상북도 영천시",
-        name="경상북도 영천시_군장병 할인업소 현황",
-        data_page_url="https://www.data.go.kr/data/15044647/fileData.do",
-        # 공공데이터포털에서 다운로드 URL 확인 후 넣기
-        csv_url=None,
-        json_url=None,
-    ),
-    PublicDataSource(
         source_id="pocheon_file",
         region="경기도 포천시",
         name="경기도 포천시_군장병할인업소 현황",
