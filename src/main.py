@@ -5,6 +5,7 @@ import pandas as pd
 from src.api.mma_narasarang_api import fetch_mma_narasarang_api
 from src.api.yeongcheon_open_api import fetch_yeongcheon_open_api
 from src.processor.kakao_enricher import enrich_discount_stores_with_kakao
+from src.processor.naver_enricher import run_naver_enrich_pipeline
 from src.processor.normalize_store import normalize_all_raw_csv
 from src.processor.open_api_normalizer import (
     normalize_mma_narasarang_api,
@@ -19,9 +20,7 @@ logger = get_logger()
 def run_file_data_pipeline():
     """수동 다운로드한 CSV 파일데이터를 정규화하는 함수"""
     logger.info("📂 CSV 파일데이터 정규화 시작")
-
     result = normalize_all_raw_csv()
-
     logger.info("✅ CSV 데이터 정규화 완료: %s건", len(result))
     return result
 
@@ -37,7 +36,6 @@ def run_open_api_pipeline():
         yeongcheon_raw = fetch_yeongcheon_open_api()
         yeongcheon_df = normalize_yeongcheon_open_api(yeongcheon_raw)
         dataframes.append(yeongcheon_df)
-
         logger.info("✅ 영천시 데이터 완료: %s건", len(yeongcheon_df))
     except RuntimeError as error:
         logger.error("❌ 영천시 API 실패: %s", error)
@@ -47,7 +45,6 @@ def run_open_api_pipeline():
         mma_raw = fetch_mma_narasarang_api()
         mma_df = normalize_mma_narasarang_api(mma_raw)
         dataframes.append(mma_df)
-
         logger.info("✅ 병무청 데이터 완료: %s건", len(mma_df))
     except RuntimeError as error:
         logger.error("❌ 병무청 API 실패: %s", error)
@@ -94,10 +91,16 @@ def run_all_pipeline():
 def run_enrich_pipeline():
     """카카오 로컬 API로 할인업소 위치 정보를 보강하는 함수"""
     logger.info("📍 카카오 위치 정보 보강 시작")
-
     result = enrich_discount_stores_with_kakao()
-
     logger.info("✅ 카카오 위치 정보 보강 완료: %s건", len(result))
+    return result
+
+
+def run_naver_pipeline():
+    """네이버 플레이스 크롤링으로 할인업소 정보를 보강하는 함수"""
+    logger.info("🟢 네이버 플레이스 정보 보강 시작")
+    result = run_naver_enrich_pipeline()
+    logger.info("✅ 네이버 플레이스 정보 보강 완료")
     return result
 
 
@@ -105,7 +108,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["file", "api", "all", "enrich"],
+        choices=["file", "api", "all", "enrich", "naver"],
         default="file",
         help="실행할 데이터 파이프라인 선택",
     )
@@ -120,6 +123,8 @@ def main():
         run_all_pipeline()
     elif args.mode == "enrich":
         run_enrich_pipeline()
+    elif args.mode == "naver":
+        run_naver_pipeline()
 
 
 if __name__ == "__main__":
