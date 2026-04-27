@@ -3,8 +3,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from src.api.discount_store_sources import (DISCOUNT_STORE_SOURCES,
-                                            PublicDataSource)
+from src.api.discount_store_sources import DISCOUNT_STORE_SOURCES, PublicDataSource
 from src.utils.file_utils import save_dataframe_csv, save_json
 
 

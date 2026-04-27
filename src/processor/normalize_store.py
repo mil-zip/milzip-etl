@@ -3,8 +3,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from src.utils.file_utils import (read_csv_with_encoding, save_dataframe_csv,
-                                  save_json)
+from src.utils.file_utils import read_csv_with_encoding, save_dataframe_csv, save_json
 
 COMMON_COLUMNS = [
     "name",

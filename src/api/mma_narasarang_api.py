@@ -1,3 +1,4 @@
+import time
 import xml.etree.ElementTree as ET
 
 import requests
@@ -6,7 +7,7 @@ from src.config.settings import DATA_GO_KR_SERVICE_KEY, MMA_NARASARANG_API_URL
 from src.utils.api_utils import mask_sensitive_text
 
 
-def fetch_mma_narasarang_api(page_no=1, num_of_rows=100):
+def fetch_mma_narasarang_api(page_no=1, num_of_rows=100, retries=3):
     """병무청 나라사랑가게 OpenAPI XML 데이터를 수집하는 함수"""
     params = {
         "serviceKey": DATA_GO_KR_SERVICE_KEY,
@@ -14,14 +15,23 @@ def fetch_mma_narasarang_api(page_no=1, num_of_rows=100):
         "numOfRows": num_of_rows,
     }
 
-    try:
-        response = requests.get(MMA_NARASARANG_API_URL, params=params, timeout=15)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as error:
-        masked_error = mask_sensitive_text(str(error))
-        raise RuntimeError(f"병무청 OpenAPI 요청 실패: {masked_error}")
+    for attempt in range(retries):
+        try:
+            response = requests.get(
+                MMA_NARASARANG_API_URL,
+                params=params,
+                timeout=15,
+            )
+            response.raise_for_status()
+            return _xml_to_dict_list(response.text)
 
-    return _xml_to_dict_list(response.text)
+        except requests.exceptions.RequestException as error:
+            if attempt < retries - 1:
+                time.sleep(2)
+                continue
+
+            masked_error = mask_sensitive_text(str(error))
+            raise RuntimeError(f"병무청 OpenAPI 요청 실패: {masked_error}")
 
 
 def _xml_to_dict_list(xml_text):
@@ -31,8 +41,10 @@ def _xml_to_dict_list(xml_text):
 
     for item in root.findall(".//item"):
         row = {}
+
         for child in item:
             row[child.tag] = child.text or ""
+
         items.append(row)
 
     return items
