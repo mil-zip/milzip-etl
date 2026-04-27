@@ -11,6 +11,10 @@ from src.processor.open_api_normalizer import (
     normalize_mma_narasarang_api,
     normalize_yeongcheon_open_api,
 )
+from src.processor.tour_api_enricher import (
+    run_tour_api_enrich_pipeline,
+    run_tour_target_extract_pipeline,
+)
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
 
@@ -104,11 +108,27 @@ def run_naver_pipeline():
     return result
 
 
+def run_tour_target_pipeline():
+    """TourAPI 보강 대상만 추출하는 함수"""
+    logger.info("📄 TourAPI 보강 대상 추출 시작")
+    result = run_tour_target_extract_pipeline()
+    logger.info("✅ TourAPI 보강 대상 추출 완료: %s건", len(result))
+    return result
+
+
+def run_tour_pipeline():
+    """TourAPI로 공백 데이터를 보강하는 함수"""
+    logger.info("🏛️ TourAPI 정보 보강 시작")
+    result = run_tour_api_enrich_pipeline()
+    logger.info("✅ TourAPI 정보 보강 완료: %s건", len(result))
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["file", "api", "all", "enrich", "naver"],
+        choices=["file", "api", "all", "enrich", "naver", "tour-target", "tour"],
         default="file",
         help="실행할 데이터 파이프라인 선택",
     )
@@ -125,6 +145,10 @@ def main():
         run_enrich_pipeline()
     elif args.mode == "naver":
         run_naver_pipeline()
+    elif args.mode == "tour-target":
+        run_tour_target_pipeline()
+    elif args.mode == "tour":
+        run_tour_pipeline()
 
 
 if __name__ == "__main__":
