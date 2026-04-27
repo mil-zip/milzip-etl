@@ -4,9 +4,12 @@ import pandas as pd
 
 from src.api.mma_narasarang_api import fetch_mma_narasarang_api
 from src.api.yeongcheon_open_api import fetch_yeongcheon_open_api
+from src.processor.kakao_enricher import enrich_discount_stores_with_kakao
 from src.processor.normalize_store import normalize_all_raw_csv
-from src.processor.open_api_normalizer import (normalize_mma_narasarang_api,
-                                               normalize_yeongcheon_open_api)
+from src.processor.open_api_normalizer import (
+    normalize_mma_narasarang_api,
+    normalize_yeongcheon_open_api,
+)
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
 
@@ -88,11 +91,21 @@ def run_all_pipeline():
     return final_df
 
 
+def run_enrich_pipeline():
+    """카카오 로컬 API로 할인업소 위치 정보를 보강하는 함수"""
+    logger.info("📍 카카오 위치 정보 보강 시작")
+
+    result = enrich_discount_stores_with_kakao()
+
+    logger.info("✅ 카카오 위치 정보 보강 완료: %s건", len(result))
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["file", "api", "all"],
+        choices=["file", "api", "all", "enrich"],
         default="file",
         help="실행할 데이터 파이프라인 선택",
     )
@@ -105,6 +118,8 @@ def main():
         run_open_api_pipeline()
     elif args.mode == "all":
         run_all_pipeline()
+    elif args.mode == "enrich":
+        run_enrich_pipeline()
 
 
 if __name__ == "__main__":

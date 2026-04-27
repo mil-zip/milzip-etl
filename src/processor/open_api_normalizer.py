@@ -1,5 +1,7 @@
 import pandas as pd
 
+from src.utils.address_utils import normalize_korean_address
+
 COMMON_COLUMNS = [
     "name",
     "category",
@@ -31,7 +33,7 @@ def normalize_yeongcheon_open_api(raw_data):
                 "name": _pick(item, ["storeNm"]),
                 "category": "",
                 "business_type": "",
-                "address": _pick(item, ["addr"]),
+                "address": normalize_korean_address(_pick(item, ["addr"])),
                 "road_address": "",
                 "phone": _pick(item, ["tel"]),
                 "open_time": "",
@@ -62,7 +64,7 @@ def normalize_mma_narasarang_api(raw_data):
                 "name": _pick(item, ["udaeGgm"]),
                 "category": _pick(item, ["gtcdNm"]),
                 "business_type": "",
-                "address": _pick(item, ["juso"]),
+                "address": normalize_korean_address(_pick(item, ["juso"])),
                 "road_address": "",
                 "phone": _pick(item, ["udgigwanTelno"]),
                 "open_time": "",
