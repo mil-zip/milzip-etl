@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -17,6 +18,7 @@ COMMON_COLUMNS = [
     "closed_day",
     "main_menu",
     "discount_info",
+    "discount_rate",
     "latitude",
     "longitude",
     "source",
@@ -47,6 +49,20 @@ COLUMN_ALIASES = {
     "longitude": ["경도", "lng", "LNG", "lon"],
     "data_base_date": ["데이터기준일", "데이터기준일자", "기준일자"],
 }
+
+
+def _extract_discount_rate(discount_info: Any) -> Optional[float]:
+    """할인내용 문자열에서 숫자 비율(%) 또는 금액(원)을 추출"""
+    text = str(discount_info).strip() if not pd.isna(discount_info) else ""
+    if not text or text == "nan":
+        return None
+    pct = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+    if pct:
+        return float(pct.group(1))
+    won = re.search(r"(\d[\d,]*)\s*원", text)
+    if won:
+        return float(won.group(1).replace(",", ""))
+    return None
 
 
 def _find_column(dataframe: pd.DataFrame, candidates: list) -> Optional[str]:
@@ -111,6 +127,7 @@ def normalize_discount_store_dataframe(
                 "closed_day": _get_value(row, column_map["closed_day"]),
                 "main_menu": _get_value(row, column_map["main_menu"]),
                 "discount_info": _get_value(row, column_map["discount_info"]),
+                "discount_rate": _extract_discount_rate(_get_value(row, column_map["discount_info"])),
                 "latitude": _to_float(_get_value(row, column_map["latitude"])),
                 "longitude": _to_float(_get_value(row, column_map["longitude"])),
                 "source": source,
