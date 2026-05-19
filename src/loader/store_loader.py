@@ -31,7 +31,7 @@ class Base(DeclarativeBase):
 
 
 class Store(Base):
-    __tablename__ = "store"
+    __tablename__ = "stores"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -55,7 +55,7 @@ class Store(Base):
 
 
 class StoreBenefit(Base):
-    __tablename__ = "store_benefit"
+    __tablename__ = "store_benefits"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("Store.id"), nullable=False)
