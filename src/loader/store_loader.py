@@ -47,7 +47,7 @@ class Store(Base):
     close_time = mapped_column(Time, nullable=True)
     close_date = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    updated_at = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    modified_at = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
     benefits: Mapped[List["StoreBenefit"]] = relationship(
         "StoreBenefit", back_populates="store", cascade="all, delete-orphan"
@@ -58,12 +58,12 @@ class StoreBenefit(Base):
     __tablename__ = "store_benefits"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("Store.id"), nullable=False)
+    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("stores.id"), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     discount_rate: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     condition_text: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    updated_at = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    modified_at = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
     store: Mapped["Store"] = relationship("Store", back_populates="benefits")
 
