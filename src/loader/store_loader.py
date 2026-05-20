@@ -105,7 +105,22 @@ def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
 
         for _, row in df.iterrows():
             name = str(row["name"]).strip()
-            address = str(row["address"]).strip()
+            # address(지번) 우선, 비어있으면 road_address(도로명) fallback
+            # pd.read_csv()가 빈 문자열을 NaN으로 읽어 str()하면 "nan"이 되므로 _is_valid 체크 필수
+            address_raw = row.get("address", "")
+            road_raw = row.get("road_address", "")
+            address = (
+                str(address_raw).strip()
+                if _is_valid(address_raw)
+                else str(road_raw).strip()
+                if _is_valid(road_raw)
+                else ""
+            )
+
+            if not address:
+                logger.warning("주소 없음, 스킵: %s", name)
+                skipped += 1
+                continue
 
             exists = db.query(Store).filter(
                 Store.name == name, Store.address == address

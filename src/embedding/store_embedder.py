@@ -56,8 +56,8 @@ def _setup_pgvector(conn) -> None:
 def run_store_embedding_pipeline() -> None:
     database_url = os.getenv(
         "DATABASE_URL",
-        f"postgresql://postgres:@localhost:5432/milzip",
-    )
+        "postgresql://postgres:@localhost:5432/milzip",
+    ).replace("postgresql+psycopg2://", "postgresql://")
 
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
