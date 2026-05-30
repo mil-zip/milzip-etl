@@ -24,6 +24,7 @@ from src.processor.tour_api_enricher import (
     run_tour_target_extract_pipeline,
 )
 from src.embedding.store_embedder import run_store_embedding_pipeline
+from src.loader.store_loader import load_stores
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
 
@@ -319,6 +320,19 @@ def run_integrated_final_pipeline():
 
     lat_count = merged["latitude"].notna().sum()
     logger.info("✅ 진짜 최종 데이터 저장 완료: %d건 (위도경도 보유 %d건)", len(merged), lat_count)
+
+    # 위도경도 여전히 없는 항목 제거
+    before_drop = len(merged)
+    merged = merged[merged["latitude"].notna() & merged["longitude"].notna()].reset_index(drop=True)
+    dropped = before_drop - len(merged)
+    if dropped > 0:
+        logger.info("🗑️  위도경도 없는 %d건 제거 → 최종 %d건", dropped, len(merged))
+        save_dataframe_csv(merged, INTEGRATED_FINAL_CSV)
+        save_json(
+            merged.where(pd.notnull(merged), None).to_dict(orient="records"),
+            INTEGRATED_FINAL_JSON,
+        )
+
     return merged
 
 
@@ -343,6 +357,7 @@ def main():
             "web-scrape",
             "integrated-final",
             "embedding",
+            "load",
         ],
         default="file",
     )
@@ -389,6 +404,9 @@ def main():
 
     elif args.mode == "embedding":
         run_store_embedding_pipeline()
+
+    elif args.mode == "load":
+        load_stores(reset=False)
 
 
 if __name__ == "__main__":
