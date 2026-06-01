@@ -24,6 +24,7 @@ from src.processor.tour_api_enricher import (
     run_tour_target_extract_pipeline,
 )
 from src.embedding.store_embedder import run_store_embedding_pipeline
+from src.processor.image_enricher import run_image_enrich_pipeline
 from src.loader.store_loader import load_stores
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
@@ -356,6 +357,7 @@ def main():
             "tour",
             "web-scrape",
             "integrated-final",
+            "image-enrich",
             "embedding",
             "load",
         ],
@@ -401,6 +403,9 @@ def main():
 
     elif args.mode == "integrated-final":
         run_integrated_final_pipeline()
+
+    elif args.mode == "image-enrich":
+        run_image_enrich_pipeline()
 
     elif args.mode == "embedding":
         run_store_embedding_pipeline()
