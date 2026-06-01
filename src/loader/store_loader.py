@@ -1,14 +1,15 @@
 """
-integrated_final_discount_stores.csv → PostgreSQL Store / StoreBenefit 테이블 적재
+integrated_final_discount_stores.csv → PostgreSQL Store / StoreBenefit / StoreImage 테이블 적재
 """
+import json
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import List, Optional
 
 import pandas as pd
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, Integer, String, Time, DECIMAL, ForeignKey, create_engine, func, text
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, Integer, String, Time, DECIMAL, ForeignKey, create_engine, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
-from typing import List, Optional
 
 from src.utils.category_mapper import StoreCategory, map_category
 from src.utils.logger import get_logger
@@ -52,6 +53,9 @@ class Store(Base):
     benefits: Mapped[List["StoreBenefit"]] = relationship(
         "StoreBenefit", back_populates="store", cascade="all, delete-orphan"
     )
+    images: Mapped[List["StoreImage"]] = relationship(
+        "StoreImage", back_populates="store", cascade="all, delete-orphan"
+    )
 
 
 class StoreBenefit(Base):
@@ -68,6 +72,17 @@ class StoreBenefit(Base):
     store: Mapped["Store"] = relationship("Store", back_populates="benefits")
 
 
+class StoreImage(Base):
+    __tablename__ = "store_images"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    store_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("stores.id"), nullable=False)
+    image_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    store: Mapped["Store"] = relationship("Store", back_populates="images")
+
+
 def _parse_time(value):
     try:
         return datetime.strptime(str(value).strip(), "%H:%M").time()
@@ -79,13 +94,18 @@ def _is_valid(value) -> bool:
     return pd.notna(value) and str(value).strip() not in ("", "nan", "None")
 
 
-def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
-    """CSV를 읽어 Store / StoreBenefit 테이블에 적재한다.
+def _parse_image_urls(value) -> List[str]:
+    if not _is_valid(value):
+        return []
+    try:
+        urls = json.loads(str(value))
+        return [u for u in urls if u and isinstance(u, str)]
+    except (json.JSONDecodeError, TypeError):
+        return []
 
-    Args:
-        csv_path: 적재할 CSV 파일 경로
-        reset: True이면 기존 데이터를 모두 삭제하고 재적재
-    """
+
+def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
+    """CSV를 읽어 Store / StoreBenefit / StoreImage 테이블에 적재한다."""
     Base.metadata.create_all(bind=engine)
 
     df = pd.read_csv(csv_path)
@@ -95,6 +115,7 @@ def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
     db = SessionLocal()
     try:
         if reset:
+            db.query(StoreImage).delete()
             db.query(StoreBenefit).delete()
             db.query(Store).delete()
             db.commit()
@@ -105,8 +126,6 @@ def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
 
         for _, row in df.iterrows():
             name = str(row["name"]).strip()
-            # address(지번) 우선, 비어있으면 road_address(도로명) fallback
-            # pd.read_csv()가 빈 문자열을 NaN으로 읽어 str()하면 "nan"이 되므로 _is_valid 체크 필수
             address_raw = row.get("address", "")
             road_raw = row.get("road_address", "")
             address = (
@@ -122,10 +141,16 @@ def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
                 skipped += 1
                 continue
 
+            image_urls = _parse_image_urls(row.get("image_urls"))
+
             exists = db.query(Store).filter(
                 Store.name == name, Store.address == address
             ).first()
             if exists:
+                # 이미지가 새로 생겼고 DB에 아직 없으면 추가
+                if image_urls and not exists.images:
+                    for order, url in enumerate(image_urls):
+                        db.add(StoreImage(store_id=exists.id, image_url=url, display_order=order))
                 skipped += 1
                 continue
 
@@ -154,6 +179,9 @@ def load_stores(csv_path: Path = CSV_PATH, reset: bool = False) -> None:
                     description=discount_info[:255],
                     discount_rate=discount_rate,
                 ))
+
+            for order, url in enumerate(image_urls):
+                db.add(StoreImage(store_id=store.id, image_url=url, display_order=order))
 
             inserted += 1
             if inserted % 100 == 0:
