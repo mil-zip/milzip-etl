@@ -46,22 +46,28 @@
 <br>
 
 
-## 실행
+## 환경변수
 
-```bash
-source .venv/bin/activate
-```
+`.env` 파일에 설정합니다.
 
-또는 직접 경로 지정:
-
-```bash
-.venv/bin/python3 -m src.main --mode <mode>
-```
+| 변수 | 용도 | 필요 STEP |
+| --- | --- | --- |
+| `DATABASE_URL` | PostgreSQL 연결 | STEP 7, 8 |
+| `KAKAO_REST_API_KEY` | 위도/경도 보강 | STEP 3 |
+| `NAVER_CLIENT_ID` | 이미지·지역 검색 | STEP 4 |
+| `NAVER_CLIENT_SECRET` | 이미지·지역 검색 | STEP 4 |
+| `DATA_GO_KR_SERVICE_KEY` | 공공데이터 OpenAPI | STEP 1 |
+| `MMA_NARASARANG_API_URL` | 병무청 나라사랑가게 API | STEP 1 |
+| `YEONGCHEON_API_URL` | 영천시 할인업소 API | STEP 1 |
+| `TOUR_API_BASE_URL` | 한국관광공사 TourAPI | STEP 6 |
+| `OPENAI_API_KEY` | 임베딩 생성 | STEP 8 |
+| `YOUTH_POLICY_API_KEY` | 온통청년 청년정책 API | 군인전용 혜택 |
+| `KOBIS_API_KEY` | 박스오피스 API | 군인전용 혜택 |
 
 <br>
 
 
-## 파이프라인
+## 매장 할인 파이프라인
 
 ### STEP 1 — 공공데이터 수집 및 병합
 
@@ -117,12 +123,17 @@ source .venv/bin/activate
 ### STEP 7 — DB 적재
 
 ```bash
-.venv/bin/python3 -m src.loader.store_loader
+export DATABASE_URL='postgresql+psycopg2://user:password@localhost:5432/milzip'
+
+# 매장 할인 데이터
+.venv/bin/python3 -m src.main --mode load
+
+# 청년정책 데이터
+.venv/bin/python3 -m src.main --mode load-youth-policy
 ```
 
-- `name + address` 기준 중복 스킵
-- 기존 매장에 `image_urls`가 새로 생긴 경우 `store_images` 테이블 UPDATE
-- 카테고리 자동 매핑 포함 (`src/utils/category_mapper.py`)
+- 매장: `name + address` 기준 중복 스킵, 카테고리 자동 매핑, 이미지 UPDATE
+- 청년정책: `title + supervise_inst` 기준 중복 스킵 → `benefits` 테이블 (`SELF_DEVELOPMENT`)
 
 ### STEP 8 — 임베딩 생성
 
@@ -131,9 +142,46 @@ source .venv/bin/activate
 ```
 
 - `embedding IS NULL`인 매장만 처리 (resumable)
+- 실행 전 pgvector 확장 및 `stores.embedding` 컬럼 필요 (Flyway V2 자동 처리)
 
 <br>
 
+## 군인 전용 혜택 데이터
+
+### TMO 수집 (좌표 보강)
+
+```bash
+.venv/bin/python3 -m src.main --mode tmo
+```
+
+- `data/raw/tmo_raw.json` (국방부 공공데이터) 기반
+- 카카오 키워드 검색으로 역/터미널 위도/경도 보강
+
+### 주간 박스오피스 수집 (KOBIS)
+
+```bash
+.venv/bin/python3 -m src.main --mode boxoffice
+```
+
+- 영화진흥위원회 주간 박스오피스 상위 10편 수집
+- 영화 상세정보(장르, 상영시간) + 네이버 이미지 검색으로 포스터 수집
+- DB upsert: `weekly_boxoffice` 테이블
+
+### 청년정책 수집 (온통청년)
+
+```bash
+# 수집
+.venv/bin/python3 -m src.main --mode youth-policy
+
+# DB 적재
+.venv/bin/python3 -m src.main --mode load-youth-policy
+```
+
+- 온통청년 API에서 군인 관련 정책 필터링 수집
+- 키워드: 군인, 군장병, 병사, 현역, 복무 등
+- DB 적재: `benefits` 테이블 (`SELF_DEVELOPMENT`)
+
+<br>
 
 ## 데이터 출처
 
@@ -152,6 +200,9 @@ source .venv/bin/activate
 | 병무청 | 나라사랑가게 OpenAPI | `MMA_NARASARANG_API_URL` |
 | 경상북도 영천시 | 군장병 할인업소 OpenAPI | `YEONGCHEON_API_URL` |
 | 한국관광공사 | TourAPI 관광지 상세정보 | `TOUR_API_BASE_URL` |
+| 국방부 | TMO 운영 현황 | 파일 제공 (`data/raw/tmo_raw.json`) |
+| 영화진흥위원회 | 주간 박스오피스 + 영화정보 | `KOBIS_API_KEY` |
+| 온통청년 | 청년정책 (군인 필터) | `YOUTH_POLICY_API_KEY` |
 
 ### 웹 크롤링
 
@@ -166,13 +217,12 @@ source .venv/bin/activate
 
 | 서비스 | 용도 | 한도 |
 | --- | --- | --- |
-| Kakao Local API | 주소 → 위도/경도, 도로명주소 | 300,000건/일 (UTC 00:00 초기화) |
+| Kakao Local API | 주소 → 위도/경도, TMO 좌표 보강 | 300,000건/일 (UTC 00:00 초기화) |
 | 네이버 지역 검색 API | 장소 교차 검증 | 25,000건/일 공유 |
-| 네이버 이미지 검색 API | 매장 대표 이미지 수집 | 25,000건/일 (KST 00:00 초기화) |
+| 네이버 이미지 검색 API | 매장/영화 포스터 이미지 수집 | 25,000건/일 (KST 00:00 초기화) |
 | 네이버 플레이스 크롤링 | 전화번호, 영업시간, 메뉴 보강 | — |
 
 <br>
-
 
 ## 카테고리 매핑
 
@@ -186,8 +236,9 @@ source .venv/bin/activate
 
 <br>
 
-
 ## 출력 스키마
+
+### 매장 할인 (stores)
 
 | 컬럼 | 설명 | 출처 |
 | --- | --- | --- |
@@ -205,3 +256,30 @@ source .venv/bin/activate
 | `image_urls` | 이미지 URL 목록 (JSON 배열) | 네이버 이미지 보강 |
 | `source` | 데이터 출처 코드 | |
 | `source_region` | 수집 지역 | |
+
+### TMO (tmo_list)
+
+| 컬럼 | 설명 |
+| --- | --- |
+| `name` | TMO명 |
+| `phone` | 전화번호 |
+| `weekday_start_time` / `weekday_end_time` | 평일 운영시간 |
+| `weekend_start_time` / `weekend_end_time` | 주말 운영시간 |
+| `location_description` | 위치 설명 |
+| `note` | 비고 |
+| `is_mobile` | 출장형 여부 |
+| `latitude` / `longitude` | 위도/경도 (카카오 보강) |
+| `address` | 주소 |
+
+### 박스오피스 (weekly_boxoffice)
+
+| 컬럼 | 설명 |
+| --- | --- |
+| `rank` | 박스오피스 순위 |
+| `movie_cd` | KOBIS 영화코드 |
+| `title` | 영화명 |
+| `open_date` | 개봉일 |
+| `audience_count` | 누적 관객수 |
+| `genre` | 장르 |
+| `runtime_minutes` | 상영시간(분) |
+| `poster_url` | 포스터 이미지 URL |
