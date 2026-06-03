@@ -56,3 +56,4 @@ psycopg2-binary==2.9.12
 sqlalchemy>=2.0.0
 openai>=1.0.0
 pgvector>=0.3.0
+redis>=5.0.0

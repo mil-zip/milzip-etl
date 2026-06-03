@@ -25,7 +25,13 @@ from src.processor.tour_api_enricher import (
 )
 from src.embedding.store_embedder import run_store_embedding_pipeline
 from src.processor.image_enricher import run_image_enrich_pipeline
+from src.processor.tmo_processor import run_tmo_pipeline
+from src.api.youth_policy_api import fetch_military_youth_policies, normalize_policy
+from src.api.kobis_api import run_weekly_boxoffice_pipeline
 from src.loader.store_loader import load_stores
+from src.loader.tmo_loader import load_tmos
+from src.loader.boxoffice_loader import load_weekly_boxoffice
+from src.loader.youth_policy_loader import load_youth_policies
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
 
@@ -360,6 +366,11 @@ def main():
             "image-enrich",
             "embedding",
             "load",
+            "tmo",
+            "load-tmo",
+            "youth-policy",
+            "boxoffice",
+            "load-youth-policy",
         ],
         default="file",
     )
@@ -412,6 +423,31 @@ def main():
 
     elif args.mode == "load":
         load_stores(reset=False)
+
+    elif args.mode == "tmo":
+        run_tmo_pipeline()
+
+    elif args.mode == "load-tmo":
+        load_tmos()
+
+    elif args.mode == "boxoffice":
+        boxoffice = run_weekly_boxoffice_pipeline()
+        save_json(boxoffice, "data/processed/weekly_boxoffice.json")
+        import pandas as pd
+        save_dataframe_csv(pd.DataFrame(boxoffice), "data/processed/weekly_boxoffice.csv")
+        load_weekly_boxoffice(boxoffice)
+        logger.info("✅ 박스오피스 저장 완료: %d편", len(boxoffice))
+
+    elif args.mode == "youth-policy":
+        policies = fetch_military_youth_policies()
+        normalized = [normalize_policy(p) for p in policies]
+        save_json(normalized, "data/processed/youth_policies.json")
+        import pandas as pd
+        save_dataframe_csv(pd.DataFrame(normalized), "data/processed/youth_policies.csv")
+        logger.info("✅ 청년정책 저장 완료: %d건", len(normalized))
+
+    elif args.mode == "load-youth-policy":
+        load_youth_policies()
 
 
 if __name__ == "__main__":
