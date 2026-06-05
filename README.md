@@ -63,6 +63,10 @@
 | `OPENAI_API_KEY` | 임베딩 생성 | STEP 8 |
 | `YOUTH_POLICY_API_KEY` | 온통청년 청년정책 API | 군인전용 혜택 |
 | `KOBIS_API_KEY` | 박스오피스 API | 군인전용 혜택 |
+| `S3_BUCKET` | AWS S3 버킷명 | S3 이미지 업로드 |
+| `S3_REGION` | AWS 리전 | S3 이미지 업로드 |
+| `S3_ACCESS_KEY` | AWS IAM Access Key | S3 이미지 업로드 |
+| `S3_SECRET_KEY` | AWS IAM Secret Key | S3 이미지 업로드 |
 
 <br>
 
@@ -143,6 +147,21 @@ export DATABASE_URL='postgresql+psycopg2://user:password@localhost:5432/milzip'
 
 - `embedding IS NULL`인 매장만 처리 (resumable)
 - 실행 전 pgvector 확장 및 `stores.embedding` 컬럼 필요 (Flyway V2 자동 처리)
+
+<br>
+
+## S3 이미지 마이그레이션
+
+store_images 테이블의 외부 URL 이미지(네이버 이미지 API 수집)를 AWS S3로 업로드하고 DB URL을 교체합니다.
+
+```bash
+.venv/bin/python3 -m src.main --mode s3-upload
+```
+
+- `store_images.image_url`이 S3 URL이 아닌 행만 처리
+- 이미지 다운로드 → S3 `store/` 경로에 업로드 → DB URL 교체
+- 실패한 건은 스킵하고 계속 진행 (resumable)
+- 실행 전 `S3_ACCESS_KEY`, `S3_SECRET_KEY` 환경변수 필수
 
 <br>
 

@@ -32,6 +32,7 @@ from src.loader.store_loader import load_stores
 from src.loader.tmo_loader import load_tmos
 from src.loader.boxoffice_loader import load_weekly_boxoffice
 from src.loader.youth_policy_loader import load_youth_policies
+from src.loader.s3_image_uploader import run_s3_image_upload_pipeline
 from src.utils.file_utils import save_dataframe_csv, save_json
 from src.utils.logger import get_logger
 
@@ -371,6 +372,7 @@ def main():
             "youth-policy",
             "boxoffice",
             "load-youth-policy",
+            "s3-upload",
         ],
         default="file",
     )
@@ -448,6 +450,9 @@ def main():
 
     elif args.mode == "load-youth-policy":
         load_youth_policies()
+
+    elif args.mode == "s3-upload":
+        run_s3_image_upload_pipeline()
 
 
 if __name__ == "__main__":
