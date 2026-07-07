@@ -4,6 +4,11 @@
 
 <br>
 
+<img width="1920" height="1080" alt="1" src="https://github.com/user-attachments/assets/5b11449a-fa0b-466c-8a8c-85c43c1ddaae" />
+<img width="1920" height="1080" alt="7" src="https://github.com/user-attachments/assets/efdf0d13-d6b5-4a9d-8cbc-710a20fdcbbe" />
+<img width="1920" height="1080" alt="17" src="https://github.com/user-attachments/assets/ba4d0029-2638-4094-bfe2-d4fbd5dfff97" />
+
+
 ## ETL Process
 
 ### 1. Extract (데이터 수집)
